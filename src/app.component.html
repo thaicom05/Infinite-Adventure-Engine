@@ -8,7 +8,7 @@
     </div>
 
     @if (hasStarted()) {
-      <div class="space-y-8 flex-grow">
+      <div class.initial="animate-fade-in" class="space-y-8 flex-grow overflow-y-auto pr-2">
         <!-- Current Quest -->
         <div>
           <h3 (click)="toggleQuestDetails()" class="flex items-center text-lg font-bold text-yellow-500 mb-2 cursor-pointer select-none group">
@@ -60,9 +60,13 @@
             </svg>
             {{ uiText().inventoryTitle }}
           </h3>
-          <ul class="space-y-2 pl-7">
+          <ul class="space-y-1 pl-7">
             @for (item of gameState()?.inventory; track item) {
-              <li class="text-gray-300">{{ item }}</li>
+              <li>
+                <button (click)="initiateDrop(item)" class="w-full text-left text-gray-300 rounded p-1 -ml-1 hover:bg-gray-700 hover:text-red-400 transition-colors">
+                  {{ item }}
+                </button>
+              </li>
             } @empty {
               <li class="text-gray-500">{{ uiText().emptyInventory }}</li>
             }
@@ -83,49 +87,98 @@
         </svg>
         {{ uiText().logTitle }}
       </h3>
+      
       @if (hasStarted()) {
-        <div class="relative mb-4">
-          <button (click)="saveGame()" class="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors duration-200 flex items-center justify-center">
+        <div class="grid grid-cols-2 gap-3">
+           <button (click)="openCrafting()" [disabled]="(gameState()?.inventory?.length ?? 0) < 2" class="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors duration-200 flex items-center justify-center disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v5.586l1.293 1.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l1.293-1.293V4z" />
-              <path d="M3 14a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" />
+                <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
             </svg>
-            {{ uiText().saveButton }}
+            {{ uiText().craftingButton }}
           </button>
-           @if (saveStatus()) {
-            <span class="absolute right-0 top-1/2 -translate-y-1/2 -mr-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-ping-once">
-              {{ saveStatus() }}
-            </span>
-             <style>
-              .animate-ping-once { animation: ping-once 1s cubic-bezier(0, 0, 0.2, 1); }
-              @keyframes ping-once { 75%, 100% { transform: scale(1.2); opacity: 0; } }
+          <button (click)="toggleLorebook(true)" [disabled]="(lorebook()?.length ?? 0) === 0" class="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors duration-200 flex items-center justify-center disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
+            </svg>
+            {{ uiText().lorebookButton }}
+          </button>
+          
+          <div class="relative col-span-2">
+            <button (click)="saveGame()" class="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors duration-200 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v5.586l1.293 1.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l1.293-1.293V4z" />
+                <path d="M3 14a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" />
+              </svg>
+              {{ uiText().saveButton }}
+            </button>
+            @if (saveStatus()) {
+              <span class="absolute right-0 top-1/2 -translate-y-1/2 -mr-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-ping-once">
+                {{ saveStatus() }}
+              </span>
+              <style>
+                .animate-ping-once { animation: ping-once 1s cubic-bezier(0, 0, 0.2, 1); }
+                @keyframes ping-once { 75%, 100% { transform: scale(1.2); opacity: 0; } }
+              </style>
+            }
+          </div>
+          @if (autoSaveStatus()) {
+            <p class="text-xs text-gray-500 text-center animate-fade-in-out col-span-2">{{ autoSaveStatus() }}</p>
+            <style>
+              .animate-fade-in-out { animation: fadeInOut 2.5s ease-in-out; }
+              @keyframes fadeInOut { 
+                0%, 100% { opacity: 0; }
+                20%, 80% { opacity: 1; }
+              }
             </style>
           }
         </div>
       }
       
       @if (savedGame(); as saved) {
-        <div class="bg-black/20 p-3 rounded-md border border-gray-700">
-          <p class="text-sm text-gray-400 truncate mb-2">{{ saved.storySegment.storyText }}</p>
-          <p class="text-xs text-yellow-600 font-semibold mb-3">{{ saved.gameState.currentQuest.title }}</p>
-          <div class="flex space-x-2">
-            <button (click)="loadGame()" class="flex-grow bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-2 px-3 rounded-md text-sm transition-colors duration-200">
-              {{ uiText().loadButton }}
-            </button>
-            <button (click)="deleteGame()" class="bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-md text-sm transition-colors duration-200">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" />
-              </svg>
-            </button>
+        @if (!hasStarted()) {
+          <div class="bg-black/20 p-3 rounded-md border border-gray-700 mt-4">
+            <p class="text-sm text-gray-400 truncate mb-2">{{ saved.storySegment.storyText }}</p>
+            <p class="text-xs text-yellow-600 font-semibold mb-3">{{ saved.gameState.currentQuest.title }}</p>
+            <div class="flex space-x-2">
+              <button (click)="loadGame()" class="flex-grow bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-2 px-3 rounded-md text-sm transition-colors duration-200">
+                {{ uiText().loadButton }}
+              </button>
+              <button (click)="deleteGame()" class="bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-md text-sm transition-colors duration-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" />
+                </svg>
+              </button>
+            </div>
           </div>
-        </div>
+        }
       } @else {
-        <p class="text-center text-sm text-gray-500">{{ uiText().noSave }}</p>
+        @if (!hasStarted()) {
+          <p class="text-center text-sm text-gray-500 mt-4">{{ uiText().noSave }}</p>
+        }
       }
     </div>
-
-    <!-- Language Switcher -->
-    <div class="mt-8 pt-6 border-t border-gray-700">
+    
+    <div class="mt-auto pt-6 border-t border-gray-700 space-y-4">
+      <!-- Settings -->
+      @if(hasStarted()) {
+        <div>
+          <h3 class="flex items-center text-lg font-bold text-yellow-500 mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0L8.21 5.15c-.5.38-1.02.7-1.58.94L4.08 6.5c-1.56.38-2.24 2.18-1.09 3.33l1.28 1.28c.32.32.5.75.5 1.2s-.18.88-.5 1.2l-1.28 1.28c-1.15 1.15-.47 2.95 1.09 3.33l2.55.61c.56.13 1.08.46 1.58.94l.3 1.98c.38 1.56 2.6 1.56 2.98 0l.3-1.98c.5-.38 1.02-.7 1.58-.94l2.55-.61c1.56-.38 2.24-2.18 1.09-3.33l-1.28-1.28c-.32-.32-.5-.75-.5-1.2s.18-.88.5-1.2l1.28-1.28c1.15-1.15.47-2.95-1.09-3.33l-2.55-.61c-.56-.13-1.08-.46-1.58-.94l-.3-1.98zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+            </svg>
+            {{ uiText().settingsTitle }}
+          </h3>
+          <div class="pl-7">
+            <div class="flex items-center justify-between">
+              <label for="image-toggle" class="text-gray-300">{{ uiText().imageGenerationLabel }}</label>
+              <button (click)="toggleImageGeneration()" class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors" [class]="isImageGenerationEnabled() ? 'bg-yellow-500' : 'bg-gray-600'">
+                <span class="inline-block w-4 h-4 transform bg-white rounded-full transition-transform" [class]="isImageGenerationEnabled() ? 'translate-x-6' : 'translate-x-1'"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+      <!-- Language Switcher -->
       <div class="flex items-center justify-center space-x-2">
         <button (click)="setLanguage('th')" class="px-4 py-2 text-sm font-medium rounded-md transition-colors" [class]="language() === 'th' ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'">
           TH
@@ -143,7 +196,7 @@
       <div class="text-center">
         <h1 class="font-cinzel text-5xl md:text-7xl font-bold text-white mb-4">{{ uiText().mainTitle }}</h1>
         <p class="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto mb-8">{{ uiText().mainSubtitle }}</p>
-        <button (click)="startGame()" class="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-3 px-8 rounded-lg text-lg transition duration-300 shadow-lg shadow-yellow-500/20 transform hover:scale-105">
+        <button (click)="openCharacterCreation()" class="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-3 px-8 rounded-lg text-lg transition-all duration-200 shadow-lg shadow-yellow-500/20 transform hover:scale-105 active:scale-95">
           {{ uiText().startButton }}
         </button>
       </div>
@@ -170,15 +223,21 @@
 
         <!-- Image Container -->
         <div class="w-full aspect-video bg-black/50 rounded-lg mb-6 shadow-2xl flex items-center justify-center border border-gray-700">
-          @if (image()) {
-            <img [src]="image()" alt="A scene from the adventure" class="object-cover w-full h-full rounded-lg animate-fade-in" />
+          @if (isImageGenerationEnabled()) {
+            @if (image()) {
+              <img [src]="image()" alt="A scene from the adventure" class="object-cover w-full h-full rounded-lg animate-fade-in" />
+            } @else {
+              <div class="text-gray-500">{{ uiText().unseenWorld }}</div>
+            }
           } @else {
-            <div class="text-gray-500">{{ uiText().unseenWorld }}</div>
+            <div class="text-gray-500 flex flex-col items-center justify-center p-4">
+               <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                  <path fill-rule="evenodd" d="M2.929 2.929a1 1 0 011.414 0L17.07 15.657a1 1 0 01-1.414 1.414L2.929 4.343a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+              <p class="text-center">{{ uiText().imageGenerationDisabled }}</p>
+            </div>
           }
-          <style>
-            .animate-fade-in { animation: fadeIn 0.5s ease-in-out; }
-            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-          </style>
         </div>
 
         <!-- Story Text -->
@@ -189,12 +248,287 @@
         <!-- Choices -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           @for (choice of storySegment()?.choices; track choice) {
-            <button (click)="makeChoice(choice)" [disabled]="isLoading()" class="w-full text-left bg-gray-800 hover:bg-yellow-500 hover:text-gray-900 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-semibold py-4 px-6 rounded-lg transition duration-300 transform hover:scale-[1.02]">
+            <button (click)="makeChoice(choice)" [disabled]="isLoading()" class="w-full text-left bg-gray-800 hover:bg-yellow-500 hover:text-gray-900 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-semibold py-4 px-6 rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-95">
               {{ choice }}
             </button>
           }
         </div>
       </div>
     }
+
+    <!-- Lore Notification -->
+    @if (loreNotification(); as loreTitle) {
+      <div class="fixed bottom-8 left-1/2 -translate-x-1/2 w-11/12 max-w-md bg-gray-800/90 backdrop-blur-sm border border-yellow-500/50 text-white p-4 rounded-lg shadow-2xl z-50 animate-lore-notify">
+        <div class="flex items-start">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3 text-yellow-400 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
+          </svg>
+          <div>
+            <h4 class="font-bold text-yellow-400">{{ uiText().loreDiscovered }}</h4>
+            <p class="text-sm text-gray-300 mt-1 line-clamp-2 font-semibold">{{ loreTitle }}</p>
+          </div>
+        </div>
+      </div>
+      <style>
+        .animate-lore-notify {
+          animation: lore-notify-anim 6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes lore-notify-anim {
+          0% { transform: translate(-50%, 100px); opacity: 0; }
+          10% { transform: translate(-50%, 0); opacity: 1; }
+          90% { transform: translate(-50%, 0); opacity: 1; }
+          100% { transform: translate(-50%, 100px); opacity: 0; }
+        }
+      </style>
+    }
   </div>
+
+  <!-- Modals -->
+  @if (isLorebookVisible()) {
+    <div (click)="toggleLorebook(false)" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex items-center justify-center p-4 animate-fade-in-fast">
+      <div (click)="$event.stopPropagation()" class="bg-gray-800/90 border border-yellow-500/30 rounded-lg shadow-2xl w-full max-w-3xl max-h-[80vh] flex flex-col" [class]="isLorebookClosing() ? 'animate-scale-out' : 'animate-scale-in'">
+        <div class="flex items-center justify-between p-4 border-b border-gray-700 flex-shrink-0">
+            @if (selectedLoreEntry()) {
+                <button (click)="deselectLore()" class="flex items-center text-yellow-400 hover:text-yellow-300 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                    {{ uiText().loreBackButton }}
+                </button>
+            } @else {
+                 <h2 class="font-cinzel text-2xl text-yellow-400">{{ uiText().lorebookTitle }}</h2>
+            }
+          <button (click)="toggleLorebook(false)" class="text-gray-400 hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto">
+          @if (selectedLoreEntry(); as entry) {
+            <!-- LORE DETAIL VIEW -->
+            <div class="animate-fade-in-fast">
+                <h3 class="font-cinzel text-3xl text-white mb-4">{{ entry.title }}</h3>
+                <div class="w-full aspect-video bg-black/50 rounded-lg mb-6 flex items-center justify-center border border-gray-700">
+                    @if(isLoreImageLoading()) {
+                        <div class="flex flex-col items-center text-gray-400">
+                            <svg class="animate-spin h-8 w-8 text-yellow-400 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>{{ uiText().loreImageLoading }}</span>
+                        </div>
+                    } @else if (loreDetailImage(); as imageUrl) {
+                        <img [src]="imageUrl" [alt]="entry.title" class="object-cover w-full h-full rounded-lg" />
+                    } @else {
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    }
+                </div>
+                <p class="text-gray-300 leading-relaxed whitespace-pre-wrap">{{ entry.content }}</p>
+            </div>
+          } @else {
+            <!-- LORE LIST VIEW -->
+            <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                <input 
+                    type="text" 
+                    [placeholder]="uiText().loreSearchPlaceholder" 
+                    [value]="loreSearchTerm()"
+                    (input)="updateLoreSearch($event)"
+                    class="w-full sm:flex-grow bg-gray-900 border border-gray-600 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                />
+                <div class="flex-shrink-0 flex items-center gap-2">
+                    <button (click)="setLoreSortOrder('date')" class="px-4 py-2 text-sm font-medium rounded-md transition-colors" [class]="loreSortOrder() === 'date' ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'">{{ uiText().loreSortDate }}</button>
+                    <button (click)="setLoreSortOrder('alpha')" class="px-4 py-2 text-sm font-medium rounded-md transition-colors" [class]="loreSortOrder() === 'alpha' ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'">{{ uiText().loreSortAlpha }}</button>
+                </div>
+            </div>
+            <ul class="space-y-2">
+                @for (entry of filteredAndSortedLore(); track entry.id) {
+                <li>
+                    <button (click)="selectLore(entry)" class="w-full text-left p-3 rounded-md transition-colors bg-gray-900/50 hover:bg-yellow-500/10 border border-gray-700/50 hover:border-yellow-500/50">
+                        <h4 class="font-bold text-yellow-400">{{ entry.title }}</h4>
+                        <p class="text-sm text-gray-400 mt-1 line-clamp-2">{{ entry.content }}</p>
+                    </button>
+                </li>
+                } @empty {
+                <p class="text-gray-500 text-center py-8">{{ uiText().emptyLorebook }}</p>
+                }
+            </ul>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (isCreatingCharacter()) {
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex items-center justify-center p-4 animate-fade-in-fast">
+      <div class="bg-gray-800/90 border border-yellow-500/30 rounded-lg shadow-2xl w-full max-w-2xl flex flex-col" [class]="isCreatingCharacterClosing() ? 'animate-scale-out' : 'animate-scale-in'">
+        <div class="flex items-center justify-between p-4 border-b border-gray-700">
+          <h2 class="font-cinzel text-2xl text-yellow-400">{{ uiText().createHeroTitle }}</h2>
+          <button (click)="closeCharacterCreation()" class="text-gray-400 hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="p-6 space-y-6">
+          <div>
+            <label for="char-name" class="block text-sm font-medium text-yellow-400 mb-2">{{ uiText().nameLabel }}</label>
+            <input
+              type="text"
+              id="char-name"
+              [placeholder]="uiText().namePlaceholder"
+              [value]="characterName()"
+              (input)="characterName.set($any($event.target).value)"
+              class="w-full bg-gray-900 border border-gray-600 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-yellow-400 mb-2">{{ uiText().archetypeLabel }}</label>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              @for (key of ['warrior', 'rogue', 'mage']; track key) {
+                @let archetype = archetypeData()[key];
+                <div 
+                  (click)="selectArchetype(key)"
+                  class="p-4 border rounded-md cursor-pointer transition-all duration-200"
+                  [class]="selectedArchetype() === key ? 'border-yellow-500 bg-yellow-500/10 ring-2 ring-yellow-500' : 'border-gray-600 hover:border-yellow-500/50 hover:bg-gray-700/50'"
+                >
+                  <h3 class="font-bold text-lg text-white">{{ archetype.name }}</h3>
+                  <p class="text-sm text-gray-400 mt-1">{{ archetype.description }}</p>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div>
+            <label for="char-appearance" class="block text-sm font-medium text-yellow-400 mb-2">{{ uiText().appearanceLabel }}</label>
+            <textarea
+              id="char-appearance"
+              rows="3"
+              [value]="characterAppearance()"
+              (input)="characterAppearance.set($any($event.target).value)"
+              class="w-full bg-gray-900 border border-gray-600 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+            ></textarea>
+          </div>
+        </div>
+        <div class="p-4 mt-auto border-t border-gray-700 text-right">
+            <button 
+              (click)="confirmCharacterCreation()"
+              [disabled]="!characterName().trim() || !selectedArchetype()"
+              class="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-2 px-6 rounded-md transition-colors duration-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed"
+            >
+                {{ uiText().startJourneyButton }}
+            </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (isCrafting()) {
+    <div (click)="closeCrafting()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex items-center justify-center p-4 animate-fade-in-fast">
+      <div (click)="$event.stopPropagation()" class="bg-gray-800/90 border border-yellow-500/30 rounded-lg shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col" [class]="isCraftingClosing() ? 'animate-scale-out' : 'animate-scale-in'">
+        <div class="flex items-center justify-between p-4 border-b border-gray-700">
+          <h2 class="font-cinzel text-2xl text-yellow-400">{{ uiText().craftingTitle }}</h2>
+          <button (click)="closeCrafting()" class="text-gray-400 hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <div class="p-6 overflow-y-auto">
+          @if (!craftingStatus()) {
+            <div>
+              <label class="block text-sm font-medium text-yellow-400 mb-3">{{ uiText().craftingSelect }}</label>
+              <div class="space-y-2 max-h-60 overflow-y-auto pr-2">
+                @for (item of gameState()?.inventory; track item) {
+                  <label class="flex items-center bg-gray-900/50 p-3 rounded-md cursor-pointer hover:bg-gray-700/50 border border-transparent has-[:checked]:border-yellow-500 has-[:checked]:bg-yellow-500/10">
+                    <input type="checkbox" [checked]="craftingSelection().includes(item)" (change)="toggleCraftingSelection(item)" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-yellow-600 focus:ring-yellow-500">
+                    <span class="ml-3 text-gray-300">{{ item }}</span>
+                  </label>
+                }
+              </div>
+            </div>
+          } @else {
+            <div class="text-center py-4">
+              @if (isCraftingLoading()) {
+                <svg class="animate-spin h-10 w-10 text-yellow-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-gray-300 mt-3">{{ uiText().craftingInProgress }}</p>
+              } @else {
+                  @if (craftingStatus(); as status) {
+                    <h3 class="text-xl font-bold mb-2" [class]="status.success ? 'text-green-400' : 'text-red-400'">
+                      {{ status.success ? uiText().craftingSuccess : uiText().craftingFailure }}
+                    </h3>
+                    <p class="text-gray-300">{{ status.message }}</p>
+                  }
+              }
+            </div>
+          }
+        </div>
+
+        <div class="p-4 mt-auto border-t border-gray-700 text-right">
+            @if (!craftingStatus()) {
+              <button 
+                (click)="attemptCrafting()"
+                [disabled]="craftingSelection().length < 2 || isCraftingLoading()"
+                class="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-2 px-6 rounded-md transition-colors duration-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed"
+              >
+                  {{ uiText().combineButton }}
+              </button>
+            } @else {
+              <button (click)="closeCrafting()" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-md transition-colors duration-200">
+                {{ uiText().closeButton }}
+              </button>
+            }
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (itemToDrop(); as item) {
+    <div (click)="cancelDrop()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in-fast">
+      <div (click)="$event.stopPropagation()" class="bg-gray-800/90 border border-red-500/30 rounded-lg shadow-2xl w-full max-w-sm flex flex-col" [class]="isDropModalClosing() ? 'animate-scale-out' : 'animate-scale-in'">
+        <div class="p-6 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <h2 class="font-cinzel text-2xl text-white mt-4">{{ uiText().dropItemTitle }}</h2>
+            <p class="text-gray-400 mt-2">{{ uiText().dropItemConfirmation.replace('{itemName}', item) }}</p>
+        </div>
+        <div class="p-4 mt-auto border-t border-gray-700 flex space-x-4">
+            <button (click)="cancelDrop()" class="w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-md transition-colors duration-200">
+              {{ uiText().cancelButton }}
+            </button>
+            <button (click)="confirmDrop()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-6 rounded-md transition-colors duration-200">
+              {{ uiText().dropButton }}
+            </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <style>
+    .animate-fade-in { animation: fadeIn 0.5s ease-in-out; }
+    .animate-fade-in-fast { animation: fadeIn 0.2s ease-in-out; }
+    .animate-scale-in { animation: scaleIn 0.2s ease-in-out; }
+    .animate-scale-out { animation: scaleOut 0.2s ease-in-out forwards; }
+    @keyframes fadeIn { 
+      from { opacity: 0; } 
+      to { opacity: 1; }
+    }
+    @keyframes scaleIn { 
+      from { opacity: 0; transform: scale(0.95); } 
+      to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes scaleOut { 
+      from { opacity: 1; transform: scale(1); } 
+      to { opacity: 0; transform: scale(0.95); }
+    }
+  </style>
 </main>
