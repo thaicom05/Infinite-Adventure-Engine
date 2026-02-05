@@ -71,11 +71,12 @@ export class AppComponent implements OnInit {
       startButton: 'เริ่มต้นการผจญภัย',
       loadingWorld: 'กำลังอัญเชิญโลกใบใหม่...',
       loadingWeaving: 'เส้นด้ายแห่งโชคชะตากำลังถักทอ...',
-      loadingPainting: 'กำลังวาดฉากด้วยแสงและเงา...',
+      loadingPainting: 'กำลังค้นหาภาพจากบันทึกโบราณ...',
       errorTitle: 'เกิดข้อผิดพลาด',
-      errorQuota: 'โควต้าการสร้างภาพของคุณหมดแล้ว เรื่องราวจะดำเนินต่อไปโดยไม่มีภาพใหม่',
+      errorQuota: 'ไม่สามารถเชื่อมต่อกับคลังภาพได้ เรื่องราวจะดำเนินต่อไปโดยไม่มีภาพใหม่',
+      errorStoryQuota: 'พลังแห่งโชคชะตาต้องใช้เวลาฟื้นฟู (โควต้า API หมด) กรุณารอสักครู่แล้วลองอีกครั้ง',
       errorGeneric: 'เกิดการรบกวนทางเวทมนตร์ที่ไม่รู้จัก โปรดลองอีกครั้ง',
-      unseenWorld: 'โลกนี้ยังไม่เคยถูกพบเห็น...',
+      unseenWorld: 'ไม่มีภาพใดตรงกับเหตุการณ์นี้...',
       initialQuest: {
         title: 'ตามหาซากปรักหักพังเสียงกระซิบ',
         objectives: ['ค้นหาแผนที่โบราณ', 'เดินทางไปยังป่าหมอก']
@@ -99,7 +100,7 @@ export class AppComponent implements OnInit {
       loreSortDate: 'วันที่',
       loreSortAlpha: 'A-Z',
       loreBackButton: 'ย้อนกลับ',
-      loreImageLoading: 'กำลังวาดภาพตำนาน...',
+      loreImageLoading: 'กำลังค้นหาภาพประกอบตำนาน...',
       // Character Creation UI
       createHeroTitle: 'สร้างวีรบุรุษของคุณ',
       nameLabel: 'ชื่อ',
@@ -117,8 +118,8 @@ export class AppComponent implements OnInit {
       craftingInProgress: 'กำลังหลอมรวมธาตุ...',
       // Settings
       settingsTitle: 'การตั้งค่า',
-      imageGenerationLabel: 'การสร้างภาพ',
-      imageGenerationDisabled: 'การสร้างภาพถูกปิดใช้งาน',
+      imageGenerationLabel: 'การค้นหาภาพ',
+      imageGenerationDisabled: 'การค้นหาภาพถูกปิดใช้งาน',
       // Drop Item UI
       dropItemTitle: 'ทิ้งไอเทม?',
       dropItemConfirmation: 'คุณแน่ใจหรือไม่ว่าต้องการทิ้ง {itemName}?',
@@ -138,11 +139,12 @@ export class AppComponent implements OnInit {
       startButton: 'Begin Your Adventure',
       loadingWorld: 'Summoning a new world...',
       loadingWeaving: 'The threads of fate are weaving...',
-      loadingPainting: 'Painting the scene with light and shadow...',
+      loadingPainting: 'Searching the archives for a visual...',
       errorTitle: 'An Error Occurred',
-      errorQuota: 'Your image generation quota has been exceeded. The story will continue without a new image.',
+      errorQuota: 'Could not connect to the image archives. The story will continue without a new image.',
+      errorStoryQuota: 'The threads of fate need time to recharge (API Quota Exceeded). Please wait a moment and try again.',
       errorGeneric: 'An unknown arcane interference occurred. Please try again.',
-      unseenWorld: 'The world is yet to be seen...',
+      unseenWorld: 'No image could be found for this moment...',
       initialQuest: {
         title: 'Find the Whispering Ruins',
         objectives: ['Locate the ancient map', 'Travel to the Misty Woods']
@@ -166,7 +168,7 @@ export class AppComponent implements OnInit {
       loreSortDate: 'Date',
       loreSortAlpha: 'A-Z',
       loreBackButton: 'Back to List',
-      loreImageLoading: 'Illustrating the legend...',
+      loreImageLoading: 'Finding an illustration for the legend...',
       // Character Creation UI
       createHeroTitle: 'Create Your Hero',
       nameLabel: 'Name',
@@ -184,8 +186,8 @@ export class AppComponent implements OnInit {
       craftingInProgress: 'Fusing the elements...',
       // Settings
       settingsTitle: 'Settings',
-      imageGenerationLabel: 'Image Generation',
-      imageGenerationDisabled: 'Image Generation is disabled',
+      imageGenerationLabel: 'Image Search',
+      imageGenerationDisabled: 'Image Search is disabled',
        // Drop Item UI
       dropItemTitle: 'Drop Item?',
       dropItemConfirmation: 'Are you sure you want to drop {itemName}?',
@@ -639,11 +641,8 @@ export class AppComponent implements OnInit {
               let imageErrorMessage: string;
               const errorMessage = err?.message?.toLowerCase() ?? '';
 
-              if (errorMessage.includes('429') || errorMessage.includes('resource_exhausted') || errorMessage.includes('quota')) {
-                imageErrorMessage = this.uiText().errorQuota;
-              } else {
-                imageErrorMessage = this.uiText().errorGeneric;
-              }
+              // Use a more generic error for any image fetch failure now
+              imageErrorMessage = this.uiText().errorQuota;
               
               this.state.update(s => ({ ...s, error: imageErrorMessage }));
               return null;
@@ -663,12 +662,14 @@ export class AppComponent implements OnInit {
     } catch (error: any) {
       this.audioService.playSound('error');
       let finalErrorMessage: string;
-      const genericApiError = this.uiText().errorGeneric;
+      const errorMessage = error?.message ?? '';
 
-      if (error && typeof error.message === 'string') {
-          finalErrorMessage = error.message;
+      if (errorMessage.includes('QUOTA_EXCEEDED')) {
+        finalErrorMessage = this.uiText().errorStoryQuota;
+      } else if (errorMessage) {
+        finalErrorMessage = errorMessage;
       } else {
-          finalErrorMessage = genericApiError;
+        finalErrorMessage = this.uiText().errorGeneric;
       }
 
       this.state.update(s => ({

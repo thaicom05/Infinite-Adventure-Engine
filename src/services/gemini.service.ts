@@ -1,22 +1,25 @@
 
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { GoogleGenAI, Type } from '@google/genai';
 import { AiResponse, CraftingResult, GameState, StorySegment } from '../models/story.model';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
 export class GeminiService {
+  private readonly http = inject(HttpClient);
+  
   private readonly ai: GoogleGenAI;
   private readonly storyModel = 'gemini-2.5-flash';
-  private readonly imageModel = 'imagen-4.0-generate-001';
 
   constructor() {
     // This is a placeholder for the API key. In a real applet environment,
-    // process.env.API_KEY would be provided.
+    // process.env.API_KEY would be provided for the story generation part.
     const apiKey = (window as any).process?.env?.API_KEY ?? '';
     if (!apiKey) {
-      console.error("API Key is missing. Please set it in your environment variables.");
+      console.error("Gemini API Key is missing. Please set it in your environment variables.");
     }
     this.ai = new GoogleGenAI({ apiKey });
   }
@@ -210,31 +213,51 @@ export class GeminiService {
       return JSON.parse(jsonString) as AiResponse;
     } catch (error: any) {
       console.error('Error generating story step:', error);
-      throw new Error(error.message || 'Failed to generate the next part of the story. The ancient magic is unstable.');
+      const errorMessage = error.message || '';
+      if (errorMessage.includes('RESOURCE_EXHAUSTED') || errorMessage.includes('429')) {
+        throw new Error('QUOTA_EXCEEDED');
+      }
+      throw new Error(errorMessage || 'Failed to generate the next part of the story. The ancient magic is unstable.');
     }
   }
 
   async generateImage(prompt: string): Promise<string> {
-    const fullPrompt = `${prompt}. Epic fantasy digital painting, detailed character design, atmospheric lighting, cinematic composition, moody, dark fantasy art style.`;
-    
-    try {
-      const result = await this.ai.models.generateImages({
-        model: this.imageModel,
-        prompt: fullPrompt,
-        config: {
-          numberOfImages: 1,
-          outputMimeType: 'image/jpeg',
-          aspectRatio: '16:9',
-        },
-      });
+    const searchTerms = prompt
+      .toLowerCase()
+      .replace(/[^a-z0-9\s,]/g, '') // remove non-alphanumeric chars
+      .split(/\s+/)
+      .join(','); // E.g. "a dark forest" -> "a,dark,forest"
 
-      if (result.generatedImages && result.generatedImages.length > 0) {
-        return result.generatedImages[0].image.imageBytes;
-      }
-      throw new Error('No image was generated.');
+    // Append thematic keywords to get better results
+    const fullQuery = `${searchTerms},fantasy,art,painting`;
+    const imageUrl = `https://source.unsplash.com/1792x1024/?${fullQuery}`;
+
+    try {
+      const blob = await firstValueFrom(
+        this.http.get(imageUrl, { responseType: 'blob' })
+      );
+
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          // result is "data:image/jpeg;base64,...."
+          // We just need the part after the comma.
+          const base64String = (reader.result as string)?.split(',')[1];
+          if (base64String) {
+            resolve(base64String);
+          } else {
+            reject(new Error('Failed to read image data from blob.'));
+          }
+        };
+        reader.onerror = (error) => {
+          reject(error);
+        };
+        reader.readAsDataURL(blob);
+      });
     } catch (error: any) {
-      console.error('Error generating image:', error);
-      throw new Error(error.message || 'Failed to visualize the world. The ether is disturbed.');
+      console.error('Error fetching image from Unsplash:', error);
+      const errorMessage = 'Failed to find a suitable image from the archives. The mists obscure our vision.';
+      throw new Error(errorMessage);
     }
   }
 }
