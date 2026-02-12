@@ -373,7 +373,7 @@
             </svg>
           </button>
         </div>
-        <div class="p-6 space-y-6">
+        <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
           <div>
             <label for="char-name" class="block text-sm font-medium text-yellow-400 mb-2">{{ uiText().nameLabel }}</label>
             <input
@@ -402,6 +402,29 @@
               }
             </div>
           </div>
+          
+          @if (selectedArchetype()) {
+            <div class="animate-fade-in">
+              <label class="block text-sm font-medium text-yellow-400 mb-2">{{ uiText().specializationLabel }}</label>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                @for (spec of archetypeData()[selectedArchetype()!].specializations; track spec.name) {
+                  <div 
+                    (click)="selectSpecialization(spec)"
+                    class="p-4 border rounded-md cursor-pointer transition-all duration-200"
+                    [class]="selectedSpecialization()?.name === spec.name ? 'border-yellow-500 bg-yellow-500/10 ring-2 ring-yellow-500' : 'border-gray-600 hover:border-yellow-500/50 hover:bg-gray-700/50'"
+                  >
+                    <h4 class="font-bold text-lg text-white">{{ spec.name }}</h4>
+                    <p class="text-sm text-gray-400 mt-1">{{ spec.description }}</p>
+                    <ul class="mt-2 text-xs text-gray-300 list-disc list-inside space-y-1">
+                      @for (stat of spec.stats; track stat.name) {
+                        <li>{{ stat.name }}: {{ stat.value }}</li>
+                      }
+                    </ul>
+                  </div>
+                }
+              </div>
+            </div>
+          }
 
           <div>
             <label for="char-appearance" class="block text-sm font-medium text-yellow-400 mb-2">{{ uiText().appearanceLabel }}</label>
@@ -414,10 +437,10 @@
             ></textarea>
           </div>
         </div>
-        <div class="p-4 mt-auto border-t border-gray-700 text-right">
+        <div class="p-4 mt-auto border-t border-gray-700 text-right flex-shrink-0">
             <button 
               (click)="confirmCharacterCreation()"
-              [disabled]="!characterName().trim() || !selectedArchetype()"
+              [disabled]="!characterName().trim() || !selectedArchetype() || !selectedSpecialization()"
               class="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-2 px-6 rounded-md transition-colors duration-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed"
             >
                 {{ uiText().startJourneyButton }}

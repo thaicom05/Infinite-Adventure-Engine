@@ -15,9 +15,8 @@ export class GeminiService {
   private readonly storyModel = 'gemini-2.5-flash';
 
   constructor() {
-    // This is a placeholder for the API key. In a real applet environment,
-    // process.env.API_KEY would be provided for the story generation part.
-    const apiKey = (window as any).process?.env?.API_KEY ?? '';
+    // Using the API key provided by the user.
+    const apiKey = 'AIzaSyCiTwgNMWmmLnFzt9WkVHLRC22PAYNT6ZM';
     if (!apiKey) {
       console.error("Gemini API Key is missing. Please set it in your environment variables.");
     }
@@ -222,41 +221,43 @@ export class GeminiService {
   }
 
   async generateImage(prompt: string): Promise<string> {
-    const searchTerms = prompt
-      .toLowerCase()
-      .replace(/[^a-z0-9\s,]/g, '') // remove non-alphanumeric chars
-      .split(/\s+/)
-      .join(','); // E.g. "a dark forest" -> "a,dark,forest"
+    const openAIApiKey = (window as any).process?.env?.OPENAI_API_KEY ?? '';
+    if (!openAIApiKey) {
+      console.error("OpenAI API Key is missing. Please set it in your environment variables.");
+      throw new Error('OpenAI API Key is not configured.');
+    }
 
-    // Append thematic keywords to get better results
-    const fullQuery = `${searchTerms},fantasy,art,painting`;
-    const imageUrl = `https://source.unsplash.com/1792x1024/?${fullQuery}`;
+    const apiURL = 'https://api.openai.com/v1/images/generations';
+    
+    // DALL-E 3 requires more descriptive prompts for better results.
+    const enhancedPrompt = `Epic dark fantasy digital painting of: ${prompt}. Cinematic lighting, high detail, dramatic atmosphere.`;
+
+    const body = {
+      model: "dall-e-3",
+      prompt: enhancedPrompt,
+      n: 1,
+      size: "1792x1024",
+      response_format: "b64_json"
+    };
+
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${openAIApiKey}`
+    });
 
     try {
-      const blob = await firstValueFrom(
-        this.http.get(imageUrl, { responseType: 'blob' })
+      const response = await firstValueFrom(
+        this.http.post<any>(apiURL, body, { headers })
       );
 
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          // result is "data:image/jpeg;base64,...."
-          // We just need the part after the comma.
-          const base64String = (reader.result as string)?.split(',')[1];
-          if (base64String) {
-            resolve(base64String);
-          } else {
-            reject(new Error('Failed to read image data from blob.'));
-          }
-        };
-        reader.onerror = (error) => {
-          reject(error);
-        };
-        reader.readAsDataURL(blob);
-      });
+      if (response && response.data && response.data[0] && response.data[0].b64_json) {
+        return response.data[0].b64_json;
+      } else {
+        throw new Error('Invalid response structure from OpenAI API.');
+      }
     } catch (error: any) {
-      console.error('Error fetching image from Unsplash:', error);
-      const errorMessage = 'Failed to find a suitable image from the archives. The mists obscure our vision.';
+      console.error('Error generating image with OpenAI:', error);
+      const errorMessage = error?.error?.error?.message || 'Failed to generate image. The creative energies are blocked.';
       throw new Error(errorMessage);
     }
   }

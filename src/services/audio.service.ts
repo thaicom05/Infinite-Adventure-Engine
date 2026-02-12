@@ -12,17 +12,17 @@ export class AudioService {
   private isInitialized = false;
 
   private sounds: Record<SoundEffect, string> = {
-    start: 'https://actions.google.com/sounds/v1/positive/success_chime.ogg',
-    choice: 'https://actions.google.com/sounds/v1/ui/ui_tap_forward.ogg',
-    save: 'https://actions.google.com/sounds/v1/magical/magic_chime.ogg',
-    lore: 'https://actions.google.com/sounds/v1/books/book_page_turn.ogg',
-    update: 'https://actions.google.com/sounds/v1/magical/magic_wand_spell.ogg',
-    error: 'https://actions.google.com/sounds/v1/negative/negative_beeps.ogg',
-    discover_lore: 'https://actions.google.com/sounds/v1/magical/magic_chime_2.ogg',
-    craft_open: 'https://actions.google.com/sounds/v1/doors/wooden_door_open.ogg',
-    craft_success: 'https://actions.google.com/sounds/v1/impacts/hammer_on_metal.ogg',
-    craft_fail: 'https://actions.google.com/sounds/v1/magical/magic_fizzle.ogg',
-    drop_item: 'https://actions.google.com/sounds/v1/impacts/thud.ogg'
+    start: 'https://www.gstatic.com/assistant/sounds/glockenspiel_triumph.ogg',
+    choice: 'https://www.gstatic.com/assistant/sounds/ui_tap_variant_01.ogg',
+    save: 'https://www.gstatic.com/assistant/sounds/magic_chime.ogg',
+    lore: 'https://www.gstatic.com/assistant/sounds/book_page_turn.ogg',
+    update: 'https://www.gstatic.com/assistant/sounds/magic_wand.ogg',
+    error: 'https://www.gstatic.com/assistant/sounds/error_chime_negative_4.ogg',
+    discover_lore: 'https://www.gstatic.com/assistant/sounds/magic_chime_2.ogg',
+    craft_open: 'https://www.gstatic.com/assistant/sounds/wooden_door_open.ogg',
+    craft_success: 'https://www.gstatic.com/assistant/sounds/hammer_on_metal.ogg',
+    craft_fail: 'https://www.gstatic.com/assistant/sounds/magic_fizzle.ogg',
+    drop_item: 'https://www.gstatic.com/assistant/sounds/thud.ogg'
   };
 
   private initialize(): void {

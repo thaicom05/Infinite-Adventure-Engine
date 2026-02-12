@@ -7,11 +7,17 @@ import { AudioService } from './services/audio.service';
 
 type Archetype = 'warrior' | 'rogue' | 'mage';
 
+interface Specialization {
+  name: string;
+  description: string;
+  stats: StatItem[];
+}
+
 interface ArchetypeData {
   name: string;
   description: string;
   appearance: string;
-  stats: StatItem[];
+  specializations: Specialization[];
   inventory: string[];
 }
 
@@ -44,6 +50,7 @@ export class AppComponent implements OnInit {
   characterName = signal('');
   characterAppearance = signal('');
   selectedArchetype = signal<Archetype | null>(null);
+  selectedSpecialization = signal<Specialization | null>(null);
 
   // Crafting Signals
   craftingSelection = signal<string[]>([]);
@@ -71,9 +78,9 @@ export class AppComponent implements OnInit {
       startButton: 'เริ่มต้นการผจญภัย',
       loadingWorld: 'กำลังอัญเชิญโลกใบใหม่...',
       loadingWeaving: 'เส้นด้ายแห่งโชคชะตากำลังถักทอ...',
-      loadingPainting: 'กำลังค้นหาภาพจากบันทึกโบราณ...',
+      loadingPainting: 'กำลังวาดภาพประกอบจินตนาการ...',
       errorTitle: 'เกิดข้อผิดพลาด',
-      errorQuota: 'ไม่สามารถเชื่อมต่อกับคลังภาพได้ เรื่องราวจะดำเนินต่อไปโดยไม่มีภาพใหม่',
+      errorQuota: 'โควต้าการสร้างภาพหมดแล้ว เรื่องราวจะดำเนินต่อไปโดยไม่มีภาพใหม่',
       errorStoryQuota: 'พลังแห่งโชคชะตาต้องใช้เวลาฟื้นฟู (โควต้า API หมด) กรุณารอสักครู่แล้วลองอีกครั้ง',
       errorGeneric: 'เกิดการรบกวนทางเวทมนตร์ที่ไม่รู้จัก โปรดลองอีกครั้ง',
       unseenWorld: 'ไม่มีภาพใดตรงกับเหตุการณ์นี้...',
@@ -100,12 +107,13 @@ export class AppComponent implements OnInit {
       loreSortDate: 'วันที่',
       loreSortAlpha: 'A-Z',
       loreBackButton: 'ย้อนกลับ',
-      loreImageLoading: 'กำลังค้นหาภาพประกอบตำนาน...',
+      loreImageLoading: 'กำลังวาดภาพประกอบตำนาน...',
       // Character Creation UI
       createHeroTitle: 'สร้างวีรบุรุษของคุณ',
       nameLabel: 'ชื่อ',
       namePlaceholder: 'ใส่ชื่อตัวละครของคุณ',
       archetypeLabel: 'เลือกอาชีพเริ่มต้น',
+      specializationLabel: 'เลือกความชำนาญ',
       appearanceLabel: 'ลักษณะภายนอก',
       startJourneyButton: 'เริ่มต้นการเดินทาง',
       // Crafting UI
@@ -118,8 +126,8 @@ export class AppComponent implements OnInit {
       craftingInProgress: 'กำลังหลอมรวมธาตุ...',
       // Settings
       settingsTitle: 'การตั้งค่า',
-      imageGenerationLabel: 'การค้นหาภาพ',
-      imageGenerationDisabled: 'การค้นหาภาพถูกปิดใช้งาน',
+      imageGenerationLabel: 'การสร้างภาพ',
+      imageGenerationDisabled: 'การสร้างภาพถูกปิดใช้งาน',
       // Drop Item UI
       dropItemTitle: 'ทิ้งไอเทม?',
       dropItemConfirmation: 'คุณแน่ใจหรือไม่ว่าต้องการทิ้ง {itemName}?',
@@ -139,9 +147,9 @@ export class AppComponent implements OnInit {
       startButton: 'Begin Your Adventure',
       loadingWorld: 'Summoning a new world...',
       loadingWeaving: 'The threads of fate are weaving...',
-      loadingPainting: 'Searching the archives for a visual...',
+      loadingPainting: 'Painting a scene from imagination...',
       errorTitle: 'An Error Occurred',
-      errorQuota: 'Could not connect to the image archives. The story will continue without a new image.',
+      errorQuota: 'Image generation quota exceeded. The story will continue without a new image.',
       errorStoryQuota: 'The threads of fate need time to recharge (API Quota Exceeded). Please wait a moment and try again.',
       errorGeneric: 'An unknown arcane interference occurred. Please try again.',
       unseenWorld: 'No image could be found for this moment...',
@@ -168,12 +176,13 @@ export class AppComponent implements OnInit {
       loreSortDate: 'Date',
       loreSortAlpha: 'A-Z',
       loreBackButton: 'Back to List',
-      loreImageLoading: 'Finding an illustration for the legend...',
+      loreImageLoading: 'Painting an illustration for the legend...',
       // Character Creation UI
       createHeroTitle: 'Create Your Hero',
       nameLabel: 'Name',
       namePlaceholder: 'Enter your character\'s name',
       archetypeLabel: 'Choose your Archetype',
+      specializationLabel: 'Choose your Specialization',
       appearanceLabel: 'Appearance',
       startJourneyButton: 'Start Journey',
       // Crafting UI
@@ -186,8 +195,8 @@ export class AppComponent implements OnInit {
       craftingInProgress: 'Fusing the elements...',
       // Settings
       settingsTitle: 'Settings',
-      imageGenerationLabel: 'Image Search',
-      imageGenerationDisabled: 'Image Search is disabled',
+      imageGenerationLabel: 'Image Generation',
+      imageGenerationDisabled: 'Image Generation is disabled',
        // Drop Item UI
       dropItemTitle: 'Drop Item?',
       dropItemConfirmation: 'Are you sure you want to drop {itemName}?',
@@ -202,15 +211,37 @@ export class AppComponent implements OnInit {
         name: 'นักรบ',
         description: 'ผู้ช่ำชองการต่อสู้ในระยะประชิด แข็งแกร่งและทนทานดั่งภูผา',
         appearance: 'นักรบกร้านศึกในชุดเกราะเหล็กกล้าที่ผ่านสมรภูมิมานับไม่ถ้วน ใบหน้ามีแผลเป็นแห่งเกียรติยศ และแววตามุ่งมั่น',
-        stats: [{ name: 'ความแข็งแกร่ง', value: 'สูง' }, { name: 'ความเร็ว', value: 'ปานกลาง' }],
-        inventory: ['ดาบเหล็กยาว', 'โล่ไม้โอ๊ค', 'เกราะเหล็กชำรุด']
+        inventory: ['ดาบเหล็กยาว', 'โล่ไม้โอ๊ค', 'เกราะเหล็กชำรุด'],
+        specializations: [
+          {
+            name: 'ผู้พิทักษ์',
+            description: 'กำแพงเหล็กกล้าที่ไม่แตกหัก เชี่ยวชาญในการป้องกันตนเองและผู้อื่น',
+            stats: [{ name: 'พลังชีวิต', value: '120/120' }, { name: 'ความทนทาน', value: '80/80' }, { name: 'พลังป้องกัน', value: 'สูง' }]
+          },
+          {
+            name: 'กลาดิเอเตอร์',
+            description: 'เจ้าแห่งสังเวียน ผู้สร้างสมดุลระหว่างการโจมตีที่โหดเหี้ยมและการป้องกันที่ช่ำชอง',
+            stats: [{ name: 'พลังชีวิต', value: '100/100' }, { name: 'ความทนทาน', value: '100/100' }, { name: 'พลังโจมตี', value: 'สูง' }]
+          }
+        ]
       },
       en: {
         name: 'Warrior',
         description: 'A master of close-quarters combat, strong and resilient as a mountain.',
         appearance: 'A battle-hardened warrior in scarred steel plate armor. Their face holds a stoic expression and determined eyes.',
-        stats: [{ name: 'Strength', value: 'High' }, { name: 'Agility', value: 'Medium' }],
-        inventory: ['Longsword', 'Oak Shield', 'Battered Steel Armor']
+        inventory: ['Longsword', 'Oak Shield', 'Battered Steel Armor'],
+        specializations: [
+          {
+            name: 'Guardian',
+            description: 'An unbreakable wall of steel, specializing in protecting themselves and others.',
+            stats: [{ name: 'Health', value: '120/120' }, { name: 'Stamina', value: '80/80' }, { name: 'Defense', value: 'High' }]
+          },
+          {
+            name: 'Gladiator',
+            description: 'A master of the arena, balancing brutal offense with practiced defense.',
+            stats: [{ name: 'Health', value: '100/100' }, { name: 'Stamina', value: '100/100' }, { name: 'Attack', value: 'High' }]
+          }
+        ]
       }
     },
     rogue: {
@@ -218,15 +249,37 @@ export class AppComponent implements OnInit {
         name: 'โจร',
         description: 'นักฆ่าในเงามืด ว่องไวและปราดเปรียว หาตัวจับได้ยาก',
         appearance: 'ร่างปราดเปรียวในชุดหนังสีเข้มที่กลมกลืนกับเงา มีผ้าคลุมศีรษะปิดบังใบหน้าครึ่งหนึ่ง เผยให้เห็นเพียงดวงตาที่คมกริบ',
-        stats: [{ name: 'ความเร็ว', value: 'สูง' }, { name: 'เล่ห์เหลี่ยม', value: 'สูง' }],
-        inventory: ['มีดสั้นคู่', 'ชุดหนังย้อมดำ', 'เครื่องมือสะเดาะกุญแจ']
+        inventory: ['มีดสั้นคู่', 'ชุดหนังย้อมดำ', 'เครื่องมือสะเดาะกุญแจ'],
+        specializations: [
+          {
+            name: 'นักฆ่า',
+            description: 'ภูตผีผู้มอบความตายจากเงามืดด้วยความแม่นยำถึงชีวิต',
+            stats: [{ name: 'การลอบเร้น', value: 'สูง' }, { name: 'โจมตีติดคริ', value: '25%' }, { name: 'พลังชีวิต', value: '70/70' }]
+          },
+          {
+            name: 'นักเล่นกล',
+            description: 'เจ้าแห่งการหลอกลวงและล่อหลอก ก้าวนำหน้าศัตรูเสมอสามก้าว',
+            stats: [{ name: 'การหลบหลีก', value: 'สูง' }, { name: 'ความเจ้าเล่ห์', value: 'สูง' }, { name: 'ความทนทาน', value: '90/90' }]
+          }
+        ]
       },
       en: {
         name: 'Rogue',
         description: 'A deadly agent of the shadows, quick and difficult to pin down.',
         appearance: 'A lithe figure clad in dark, supple leather. A cowl conceals much of their face, revealing only sharp, observant eyes.',
-        stats: [{ name: 'Agility', value: 'High' }, { name: 'Cunning', value: 'High' }],
-        inventory: ['Twin Daggers', 'Dark Leather Armor', 'Set of Lockpicks']
+        inventory: ['Twin Daggers', 'Dark Leather Armor', 'Set of Lockpicks'],
+        specializations: [
+          {
+            name: 'Assassin',
+            description: 'A phantom who deals death from the shadows with lethal precision.',
+            stats: [{ name: 'Stealth', value: 'High' }, { name: 'Critical Hit', value: '25%' }, { name: 'Health', value: '70/70' }]
+          },
+          {
+            name: 'Trickster',
+            description: 'A master of deception and misdirection, always three steps ahead of their foes.',
+            stats: [{ name: 'Evasion', value: 'High' }, { name: 'Cunning', value: 'High' }, { name: 'Stamina', value: '90/90' }]
+          }
+        ]
       }
     },
     mage: {
@@ -234,15 +287,37 @@ export class AppComponent implements OnInit {
         name: 'นักเวทย์',
         description: 'ผู้ควบคุมพลังงานลี้ลับ สามารถร่ายเวทมนตร์ที่เปลี่ยนแปลงความเป็นจริงได้',
         appearance: 'ผู้คงแก่เรียนในชุดคลุมยาวปักด้วยอักขระเวทมนตร์เรืองรอง ในมือถือคทาไม้ที่สลักเสลาอย่างวิจิตร ดวงตาฉายแววแห่งปัญญา',
-        stats: [{ name: 'สติปัญญา', value: 'สูง' }, { name: 'พลังเวท', value: 'สูง' }],
-        inventory: ['คทาไม้เวทมนตร์', 'ชุดคลุมแห่งผู้บำเพ็ญ', 'ตำราเวทเก่าๆ']
+        inventory: ['คทาไม้เวทมนตร์', 'ชุดคลุมแห่งผู้บำเพ็ญ', 'ตำราเวทเก่าๆ'],
+        specializations: [
+          {
+            name: 'นักธาตุ',
+            description: 'ผู้เป็นสื่อกลางของพลังธรรมชาติอันดิบเถื่อน ปลดปล่อยไฟและน้ำแข็งใส่ศัตรู',
+            stats: [{ name: 'มานา', value: '120/120' }, { name: 'พลังธาตุ', value: 'สูง' }, { name: 'ความเปราะบาง', value: 'สูง' }]
+          },
+          {
+            name: 'จอมขมังเวทย์',
+            description: 'ผู้ข้องเกี่ยวกับศาสตร์ต้องห้าม ดูดกลืนชีวิตและถักทอคำสาป',
+            stats: [{ name: 'มานา', value: '80/80' }, { name: 'พลังชีวิต', value: '80/80' }, { name: 'เวทมนตร์เงา', value: 'สูง' }]
+          }
+        ]
       },
       en: {
         name: 'Mage',
         description: 'A wielder of arcane energies, capable of weaving reality-altering spells.',
         appearance: 'A scholarly figure in long robes embroidered with glowing runes. They carry an intricately carved wooden staff and their eyes gleam with intellect.',
-        stats: [{ name: 'Intellect', value: 'High' }, { name: 'Arcane Power', value: 'High' }],
-        inventory: ['Enchanted Staff', 'Acolyte\'s Robes', 'Tome of Ancient Spells']
+        inventory: ['Enchanted Staff', 'Acolyte\'s Robes', 'Tome of Ancient Spells'],
+        specializations: [
+          {
+            name: 'Elementalist',
+            description: 'A conduit for the raw forces of nature, unleashing fire and ice upon their enemies.',
+            stats: [{ name: 'Mana', value: '120/120' }, { name: 'Elemental Power', value: 'High' }, { name: 'Constitution', value: 'Low' }]
+          },
+          {
+            name: 'Warlock',
+            description: 'One who dabbles in forbidden arts, siphoning life and weaving curses.',
+            stats: [{ name: 'Mana', value: '80/80' }, { name: 'Health', value: '80/80' }, { name: 'Shadow Magic', value: 'High' }]
+          }
+        ]
       }
     }
   };
@@ -327,6 +402,11 @@ export class AppComponent implements OnInit {
   selectArchetype(archetype: Archetype): void {
     this.selectedArchetype.set(archetype);
     this.characterAppearance.set(this.archetypeData()[archetype].appearance);
+    this.selectedSpecialization.set(null);
+  }
+
+  selectSpecialization(spec: Specialization): void {
+    this.selectedSpecialization.set(spec);
   }
 
   toggleQuestDetails(): void {
@@ -548,7 +628,8 @@ export class AppComponent implements OnInit {
   async confirmCharacterCreation(): Promise<void> {
     const name = this.characterName().trim();
     const archetype = this.selectedArchetype();
-    if (!name || !archetype) return;
+    const specialization = this.selectedSpecialization();
+    if (!name || !archetype || !specialization) return;
 
     this.audioService.playSound('start');
     const currentLangUi = this.uiText();
@@ -557,7 +638,7 @@ export class AppComponent implements OnInit {
     const initialGameState: GameState = {
       inventory: archetypeDetails.inventory,
       currentQuest: currentLangUi.initialQuest,
-      stats: archetypeDetails.stats,
+      stats: specialization.stats,
       lorebook: []
     };
     
@@ -638,11 +719,8 @@ export class AppComponent implements OnInit {
               console.warn("Image generation failed; proceeding with story.", err);
               this.audioService.playSound('error');
               
-              let imageErrorMessage: string;
-              const errorMessage = err?.message?.toLowerCase() ?? '';
-
-              // Use a more generic error for any image fetch failure now
-              imageErrorMessage = this.uiText().errorQuota;
+              // The error from the service is specific, so we can display it directly.
+              const imageErrorMessage = err?.message || this.uiText().errorGeneric;
               
               this.state.update(s => ({ ...s, error: imageErrorMessage }));
               return null;
