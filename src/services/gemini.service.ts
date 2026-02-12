@@ -16,7 +16,7 @@ export class GeminiService {
 
   constructor() {
     // Using the API key provided by the user.
-    const apiKey = 'AIzaSyCiTwgNMWmmLnFzt9WkVHLRC22PAYNT6ZM';
+    const apiKey = 'AIzaSyAiczEchV5VsP8aQPZBhO2CCdIh_-gnudQ';
     if (!apiKey) {
       console.error("Gemini API Key is missing. Please set it in your environment variables.");
     }

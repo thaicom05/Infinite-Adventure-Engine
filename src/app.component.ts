@@ -1,5 +1,5 @@
 
-import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GeminiService } from './services/gemini.service';
 import { AppState, GameState, StorySegment, SavedState, StatItem, LoreEntry, NewLoreEntry } from './models/story.model';
@@ -30,7 +30,7 @@ const ANIMATION_DURATION = 200; // ms
   templateUrl: './app.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   language = signal<'th' | 'en'>('th');
   isQuestExpanded = signal(false);
   
@@ -63,6 +63,8 @@ export class AppComponent implements OnInit {
   selectedLoreEntry = signal<LoreEntry | null>(null);
   loreDetailImage = signal<string | null>(null);
   isLoreImageLoading = signal(false);
+
+  private autoSaveIntervalId: number | null = null;
 
   private readonly uiTextDb = {
     th: {
@@ -385,6 +387,11 @@ export class AppComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadSaveFromLocalStorage();
+    this.startAutoSaveTimer();
+  }
+
+  ngOnDestroy(): void {
+    this.stopAutoSaveTimer();
   }
   
   openCharacterCreation(): void {
@@ -600,6 +607,22 @@ export class AppComponent implements OnInit {
     if (this._performSave()) {
       this.autoSaveStatus.set(this.uiText().autoSaveSuccess);
       setTimeout(() => this.autoSaveStatus.set(null), 2500);
+    }
+  }
+
+  private startAutoSaveTimer(): void {
+    // Save every 1 minute
+    this.autoSaveIntervalId = window.setInterval(() => {
+      // Only save if the game has started and is not in a loading or error state
+      if (this.hasStarted() && !this.isLoading() && !this.error()) {
+        this.autoSaveGame();
+      }
+    }, 60000);
+  }
+
+  private stopAutoSaveTimer(): void {
+    if (this.autoSaveIntervalId) {
+      window.clearInterval(this.autoSaveIntervalId);
     }
   }
 
