@@ -431,6 +431,22 @@
                     }
                 </div>
                 <p class="text-gray-300 leading-relaxed whitespace-pre-wrap">{{ entry.content }}</p>
+
+                @if (entry.rewardsGained && entry.rewardsGained.length > 0) {
+                  <div class="mt-6 pt-4 border-t border-gray-700/50">
+                    <h4 class="font-bold text-yellow-400 mb-3">{{ uiText().loreRewardsTitle }}</h4>
+                    <ul class="space-y-2">
+                      @for (reward of entry.rewardsGained; track reward) {
+                        <li class="flex items-center text-gray-300">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-yellow-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
+                          </svg>
+                          <span class="font-semibold">{{ reward }}</span>
+                        </li>
+                      }
+                    </ul>
+                  </div>
+                }
             </div>
           } @else {
             <!-- LORE LIST VIEW -->
