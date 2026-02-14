@@ -8,7 +8,63 @@
     </div>
 
     @if (hasStarted()) {
-      <div class.initial="animate-fade-in" class="space-y-8 flex-grow overflow-y-auto pr-2">
+      <div class="initial animate-fade-in space-y-8 flex-grow overflow-y-auto pr-2">
+        <!-- Character Profile -->
+        @if (avatarUrl()) {
+          <div>
+            <h3 class="flex items-center text-lg font-bold text-yellow-500 mb-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+              </svg>
+              {{ uiText().characterTitle }}
+            </h3>
+            <div class="pl-7">
+                <div class="flex items-center gap-4">
+                  <img [src]="avatarUrl()" [alt]="characterNameDisplay()" class="w-20 h-20 rounded-full border-2 border-yellow-500/50 p-1 bg-gray-800 object-cover flex-shrink-0" />
+                  <div class="flex-grow">
+                    <h4 class="font-cinzel text-xl text-white font-bold truncate">{{ characterNameDisplay() }}</h4>
+                    <div class="flex items-baseline gap-2">
+                       <p class="font-bold text-yellow-400">{{ uiText().level }} {{ gameState()?.level }}</p>
+                       @if((gameState()?.rebirths ?? 0) > 0) {
+                        <p class="text-xs text-cyan-400" title="{{uiText().rebirths}}">
+                          (R{{ gameState()?.rebirths }})
+                        </p>
+                       }
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5 mt-1" [title]="(gameState()?.xp ?? 0) + ' / ' + (gameState()?.xpToNextLevel ?? 100) + ' ' + uiText().xp">
+                      <div class="bg-yellow-400 h-2.5 rounded-full" [style.width]="(gameState()?.xp ?? 0) / (gameState()?.xpToNextLevel || 1) * 100 + '%'"></div>
+                    </div>
+                  </div>
+                </div>
+            </div>
+          </div>
+        }
+        
+        <!-- Skills -->
+        @if (skills().length > 0) {
+          <div>
+            <h3 class="flex items-center text-lg font-bold text-yellow-500 mb-3">
+               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M5 2a1 1 0 00-1 1v1.618C2.863 5.313 2 6.582 2 8v6a2 2 0 002 2h12a2 2 0 002-2V8c0-1.418-.863-2.687-2-3.382V3a1 1 0 00-1-1H5zm8.5 7a.5.5 0 00-1 0v3.083a.5.5 0 00.22.42l2 1.5a.5.5 0 00.56-.84L13.5 11.45V9zM10 4a1 1 0 00-1 1v2.215a2.984 2.984 0 001-.215V5a1 1 0 00-1-1h-1a1 1 0 00-1 1v.586A3.001 3.001 0 006 8v6h8V8a3 3 0 00-2-2.828V5a1 1 0 00-1-1h-1z" clip-rule="evenodd" />
+                </svg>
+              {{ uiText().skillsTitle }}
+            </h3>
+            <div class="pl-7 space-y-3">
+              @for (skill of skills(); track skill.name) {
+                <div [title]="skill.description">
+                  <div class="flex justify-between items-center mb-1">
+                    <p class="text-gray-300 font-semibold text-sm">{{ skill.name }}</p>
+                    <p class="text-gray-400 text-xs">{{ uiText().level }} {{ skill.level }}</p>
+                  </div>
+                  <div class="w-full bg-gray-700 rounded-full h-1.5" [title]="skill.xp + ' / ' + skill.xpToNextLevel + ' XP'">
+                    <div class="bg-cyan-400 h-1.5 rounded-full" [style.width]="skill.xp / (skill.xpToNextLevel || 1) * 100 + '%'"></div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
         <!-- Current Quest -->
         <div>
           <h3 (click)="toggleQuestDetails()" class="flex items-center text-lg font-bold text-yellow-500 mb-2 cursor-pointer select-none group">
@@ -49,6 +105,33 @@
                 </li>
               }
             </ul>
+          </div>
+        }
+
+        <!-- Companion Stats -->
+        @if (companion(); as comp) {
+          <div>
+            <h3 class="flex items-center text-lg font-bold text-yellow-500 mb-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M11 6a3 3 0 11-6 0 3 3 0 016 0zM14 17a6 6 0 00-12 0h12zM13 8a1 1 0 100-2 1 1 0 000 2z" />
+              </svg>
+              {{ uiText().companionTitle }}
+            </h3>
+            <div class="pl-7 space-y-2">
+              <p class="text-gray-200 font-bold text-lg">{{ comp.name }}</p>
+              <p class="text-gray-400 italic text-sm">"{{ comp.mood }}"</p>
+              <p class="text-gray-400 text-sm">{{ comp.description }}</p>
+              @if (comp.stats.length > 0) {
+                <ul class="space-y-1 pt-2">
+                  @for (stat of comp.stats; track stat.name) {
+                    <li class="text-gray-300 flex justify-between pr-4 text-sm">
+                      <span>{{ stat.name }}:</span>
+                      <span class="font-semibold text-white">{{ stat.value }}</span>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
           </div>
         }
 
@@ -241,9 +324,29 @@
         </div>
 
         <!-- Story Text -->
-        <div class="bg-black/30 p-6 rounded-lg mb-6 flex-grow border border-gray-800">
+        <div class="bg-black/30 p-6 rounded-lg mb-4 flex-grow border border-gray-800">
           <p class="text-gray-200 text-lg leading-relaxed">{{ storySegment()?.storyText }}</p>
         </div>
+
+        <!-- Companion Command Input -->
+        @if (companion()) {
+          <div class="mb-4 animate-fade-in">
+            <div class="relative">
+              <input
+                type="text"
+                [placeholder]="uiText().companionCommandPlaceholder"
+                [value]="companionCommand()"
+                (input)="companionCommand.set($any($event.target).value)"
+                class="w-full bg-gray-800 border border-gray-600 rounded-md pl-10 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              />
+              <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        }
 
         <!-- Choices -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -374,18 +477,34 @@
           </button>
         </div>
         <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-          <div>
-            <label for="char-name" class="block text-sm font-medium text-yellow-400 mb-2">{{ uiText().nameLabel }}</label>
-            <input
-              type="text"
-              id="char-name"
-              [placeholder]="uiText().namePlaceholder"
-              [value]="characterName()"
-              (input)="characterName.set($any($event.target).value)"
-              class="w-full bg-gray-900 border border-gray-600 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-            />
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label for="char-name" class="block text-sm font-medium text-yellow-400 mb-2">{{ uiText().nameLabel }}</label>
+              <input
+                type="text"
+                id="char-name"
+                [placeholder]="uiText().namePlaceholder"
+                [value]="characterName()"
+                (input)="characterName.set($any($event.target).value)"
+                class="w-full bg-gray-900 border border-gray-600 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-yellow-400 mb-2">{{ uiText().genderLabel }}</label>
+              <div class="grid grid-cols-3 gap-2">
+                <div (click)="characterGender.set('male')" class="p-2 border rounded-md cursor-pointer transition-all duration-200 text-center" [class]="characterGender() === 'male' ? 'border-yellow-500 bg-yellow-500/10 ring-1 ring-yellow-500' : 'border-gray-600 hover:border-yellow-500/50 hover:bg-gray-700/50'">
+                  <span class="font-semibold text-white">{{ uiText().genderMale }}</span>
+                </div>
+                <div (click)="characterGender.set('female')" class="p-2 border rounded-md cursor-pointer transition-all duration-200 text-center" [class]="characterGender() === 'female' ? 'border-yellow-500 bg-yellow-500/10 ring-1 ring-yellow-500' : 'border-gray-600 hover:border-yellow-500/50 hover:bg-gray-700/50'">
+                  <span class="font-semibold text-white">{{ uiText().genderFemale }}</span>
+                </div>
+                <div (click)="characterGender.set('other')" class="p-2 border rounded-md cursor-pointer transition-all duration-200 text-center" [class]="characterGender() === 'other' ? 'border-yellow-500 bg-yellow-500/10 ring-1 ring-yellow-500' : 'border-gray-600 hover:border-yellow-500/50 hover:bg-gray-700/50'">
+                  <span class="font-semibold text-white">{{ uiText().genderOther }}</span>
+                </div>
+              </div>
+            </div>
           </div>
-
+          
           <div>
             <label class="block text-sm font-medium text-yellow-400 mb-2">{{ uiText().archetypeLabel }}</label>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -440,7 +559,7 @@
         <div class="p-4 mt-auto border-t border-gray-700 text-right flex-shrink-0">
             <button 
               (click)="confirmCharacterCreation()"
-              [disabled]="!characterName().trim() || !selectedArchetype() || !selectedSpecialization()"
+              [disabled]="!characterName().trim() || !characterGender() || !selectedArchetype() || !selectedSpecialization()"
               class="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-2 px-6 rounded-md transition-colors duration-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed"
             >
                 {{ uiText().startJourneyButton }}

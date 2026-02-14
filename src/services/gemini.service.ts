@@ -15,10 +15,10 @@ export class GeminiService {
   private readonly storyModel = 'gemini-2.5-flash';
 
   constructor() {
-    // Using the API key provided by the user.
-    const apiKey = 'AIzaSyAiczEchV5VsP8aQPZBhO2CCdIh_-gnudQ';
+    // API Keys are expected to be provided by the execution environment.
+    const apiKey = (window as any).process?.env?.API_KEY ?? '';
     if (!apiKey) {
-      console.error("Gemini API Key is missing. Please set it in your environment variables.");
+      console.error("Gemini API Key is missing. It should be provided by the environment.");
     }
     this.ai = new GoogleGenAI({ apiKey });
   }
@@ -89,9 +89,31 @@ export class GeminiService {
   async generateNextStep(
     previousStory: string,
     userChoice: string,
+    companionCommand: string,
     currentGameState: GameState,
     language: 'th' | 'en'
   ): Promise<AiResponse> {
+
+    const statItemSchema = {
+        type: Type.OBJECT,
+        properties: {
+          name: { type: Type.STRING },
+          value: { type: Type.STRING }
+        },
+        required: ['name', 'value']
+    };
+
+    const skillSchema = {
+      type: Type.OBJECT,
+      properties: {
+        name: { type: Type.STRING },
+        description: { type: Type.STRING },
+        level: { type: Type.INTEGER },
+        xp: { type: Type.INTEGER },
+        xpToNextLevel: { type: Type.INTEGER }
+      },
+      required: ['name', 'description', 'level', 'xp', 'xpToNextLevel']
+    };
 
     const responseSchema = {
       type: Type.OBJECT,
@@ -115,6 +137,11 @@ export class GeminiService {
         gameState: {
           type: Type.OBJECT,
           properties: {
+            level: { type: Type.INTEGER, description: "Player's new current level." },
+            xp: { type: Type.INTEGER, description: "Player's new current XP." },
+            xpToNextLevel: { type: Type.INTEGER, description: "XP needed for the player's next level." },
+            rebirths: { type: Type.INTEGER, description: "Number of times the player has rebirthed." },
+            skills: { type: Type.ARRAY, description: "Player's updated skills array.", items: skillSchema },
             inventory: { 
               type: Type.ARRAY, 
               items: { type: Type.STRING },
@@ -136,14 +163,7 @@ export class GeminiService {
             stats: {
               type: Type.ARRAY,
               description: 'An array of character statistics. Only add, update, or remove stats if narratively relevant.',
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  name: { type: Type.STRING, description: 'The name of the stat (e.g., Health, Mana).' },
-                  value: { type: Type.STRING, description: 'The value of the stat (e.g., "100/100", "50").' }
-                },
-                required: ['name', 'value']
-              }
+              items: statItemSchema
             },
             lorebook: {
               type: Type.ARRAY,
@@ -153,46 +173,81 @@ export class GeminiService {
                 properties: {
                   title: { type: Type.STRING, description: 'A short, captivating title for the lore entry.' },
                   content: { type: Type.STRING, description: 'The detailed content of the lore snippet.' },
-                  imagePrompt: { type: Type.STRING, description: 'A concise, visually descriptive prompt in English for an image related to this lore.' }
+                  imagePrompt: { type: Type.STRING, description: 'A concise, visually descriptive prompt in English for an image related to this lore.' },
+                  rewardsGained: { 
+                    type: Type.ARRAY, 
+                    description: 'If this lore granted items/skills, list their names here.',
+                    items: { type: Type.STRING }
+                  }
                 },
                 required: ['title', 'content']
               }
+            },
+            companion: {
+              type: Type.OBJECT,
+              nullable: true,
+              description: 'The player\'s AI companion. Create one if null. Update its state otherwise.',
+              properties: {
+                name: { type: Type.STRING, description: 'Companion\'s name.' },
+                description: { type: Type.STRING, description: 'A brief description of their appearance and personality.' },
+                mood: { type: Type.STRING, description: 'Their current mood, e.g., "Anxious", "Brave".' },
+                stats: { 
+                  type: Type.ARRAY, 
+                  description: 'Companion\'s stats like Health or Loyalty.',
+                  items: statItemSchema
+                }
+              },
+              required: ['name', 'description', 'mood', 'stats']
             }
           },
-          required: ['inventory', 'currentQuest', 'stats', 'lorebook']
+          required: ['level', 'xp', 'xpToNextLevel', 'rebirths', 'skills', 'inventory', 'currentQuest', 'stats', 'lorebook', 'companion']
         },
       },
       required: ['story', 'gameState']
     };
 
     const languageInstruction = language === 'th' 
-      ? 'Generate all text output (story, choices, quest, inventory, stats keys, lore title and content) in Thai language. The only exception is visualDescription and lore imagePrompt, which must be in English.'
-      : 'Generate all text output (story, choices, quest, inventory, stats keys, lore title and content) in English language.';
+      ? 'Generate all text output (story, choices, quest, inventory, stats keys, lore title and content, companion details, skill names/descriptions, rewards) in Thai language. The only exception is visualDescription and lore imagePrompt, which must be in English.'
+      : 'Generate all text output (story, choices, quest, inventory, stats keys, lore title and content, companion details, skill names/descriptions, rewards) in English language.';
     
     const questContext = `Title: ${currentGameState.currentQuest.title}, Objectives: [${currentGameState.currentQuest.objectives.join(', ')}]`;
-    const statsContext = currentGameState.stats && currentGameState.stats.length > 0
-      ? currentGameState.stats.map(s => `${s.name}: ${s.value}`).join(', ')
-      : 'No stats yet.';
-    const lorebookContext = currentGameState.lorebook && currentGameState.lorebook.length > 0
-      ? `Player already knows about: ["${currentGameState.lorebook.map(l => l.title).join('", "')}"]`
-      : 'Player has not discovered any lore yet.';
-
+    const statsContext = currentGameState.stats && currentGameState.stats.length > 0 ? currentGameState.stats.map(s => `${s.name}: ${s.value}`).join(', ') : 'No stats yet.';
+    const lorebookContext = currentGameState.lorebook && currentGameState.lorebook.length > 0 ? `Player already knows about: ["${currentGameState.lorebook.map(l => l.title).join('", "')}"]` : 'Player has not discovered any lore yet.';
+    const genderContext = `Player's Gender: ${currentGameState.playerGender || 'not specified'}`;
+    const companionContext = currentGameState.companion ? `Current Companion State: { Name: ${currentGameState.companion.name}, Description: "${currentGameState.companion.description}", Mood: "${currentGameState.companion.mood}", Stats: [${currentGameState.companion.stats.map(s => `${s.name}: ${s.value}`).join(', ')}] }` : 'Companion State: Player does not have a companion yet.';
+    const commandContext = companionCommand.trim() ? `Player's Command to Companion: "${companionCommand}"` : 'Player\'s Command to Companion: None given.';
+    const levelContext = `Player Level: ${currentGameState.level} (XP: ${currentGameState.xp}/${currentGameState.xpToNextLevel}), Rebirths: ${currentGameState.rebirths}`;
+    const skillsContext = currentGameState.skills.length > 0 ? `Player Skills: [${currentGameState.skills.map(s => `${s.name} (Lvl ${s.level}, XP: ${s.xp}/${s.xpToNextLevel})`).join(', ')}]` : 'Player has no skills yet.';
 
     const prompt = `
       Context:
+      ${genderContext}
+      ${levelContext}
+      ${skillsContext}
       Previous Story: "${previousStory}"
       Player's Choice: "${userChoice}"
+      ${commandContext}
       Current Inventory: [${currentGameState.inventory.join(', ')}]
       Current Quest: "${questContext}"
-      Current Stats: [${statsContext}]
+      Player's Stats: [${statsContext}]
+      ${companionContext}
       Known Lore: ${lorebookContext}
 
       Task:
-      Continue the dark fantasy adventure based on the player's choice. 
-      Update the inventory, quest (title and objectives), and character stats.
-      If any NEW, significant information about the world's history, creatures, or important events is revealed, add it as a new object to the lorebook array. Do not repeat known lore.
-      Provide 3 new choices.
-      Generate a visual description for the scene.
+      You are a master storyteller and game master for a dark fantasy RPG. Continue the adventure.
+      1.  **Story Progression & XP:** Based on the player's action, write the next story segment. Award a logical amount of character XP and skill XP for any skills used.
+      2.  **Leveling Up:** If character XP >= xpToNextLevel, level them up. Increment 'level', reset 'xp' (carry over excess), and set a new 'xpToNextLevel' (e.g., new_xp = level * 100). Max level is 99.
+      3.  **REBIRTH (CRITICAL):** If level is 99 and the player levels up, they Rebirth.
+          - Set 'level' to 1.
+          - Increment 'rebirths' by 1.
+          - In the story, describe a powerful, transcendent event.
+          - **DOUBLE their core stats** (like Health, Mana - e.g., "100/100" becomes "200/200").
+          - **RESET ALL SKILLS** to level 1 and 0 XP.
+      4.  **Skill Management:** Level up skills (max 50) if their XP threshold is met. Set a new xpToNextLevel for the skill. Occasionally, you can grant a NEW skill as a reward.
+      5.  **Lore Rewards:** If discovering new lore grants an item or skill, you MUST add the name of the reward(s) to the 'rewardsGained' array for that specific lore entry.
+      6.  **Companion:** Ensure the companion is an active participant and process any commands.
+      7.  **State Updates:** Update inventory, quest, and player stats.
+      8.  **Next Step:** Provide 3 new choices and a visual description.
       ${languageInstruction}
     `;
 

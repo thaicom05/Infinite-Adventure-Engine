@@ -1,16 +1,17 @@
-
 import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GeminiService } from './services/gemini.service';
-import { AppState, GameState, StorySegment, SavedState, StatItem, LoreEntry, NewLoreEntry } from './models/story.model';
+import { AppState, GameState, StorySegment, SavedState, StatItem, LoreEntry, NewLoreEntry, Companion, Skill } from './models/story.model';
 import { AudioService } from './services/audio.service';
 
 type Archetype = 'warrior' | 'rogue' | 'mage';
+type Gender = 'male' | 'female' | 'other';
 
 interface Specialization {
   name: string;
   description: string;
   stats: StatItem[];
+  initialSkills: Skill[];
 }
 
 interface ArchetypeData {
@@ -48,6 +49,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // Character Creation Signals
   characterName = signal('');
+  characterGender = signal<Gender | null>(null);
   characterAppearance = signal('');
   selectedArchetype = signal<Archetype | null>(null);
   selectedSpecialization = signal<Specialization | null>(null);
@@ -64,6 +66,9 @@ export class AppComponent implements OnInit, OnDestroy {
   loreDetailImage = signal<string | null>(null);
   isLoreImageLoading = signal(false);
 
+  // Companion Signal
+  companionCommand = signal<string>('');
+
   private autoSaveIntervalId: number | null = null;
 
   private readonly uiTextDb = {
@@ -73,6 +78,11 @@ export class AppComponent implements OnInit, OnDestroy {
       questTitle: 'เควสปัจจุบัน',
       inventoryTitle: 'ช่องเก็บของ',
       statsTitle: 'ค่าสถานะตัวละคร',
+      characterTitle: 'ตัวละคร',
+      level: 'เลเวล',
+      xp: 'ค่าประสบการณ์',
+      rebirths: 'จุติ',
+      skillsTitle: 'สกิล',
       emptyInventory: 'ในกระเป๋าของคุณว่างเปล่า',
       welcomeMessage: 'เรื่องราวของคุณกำลังรออยู่ กดปุ่มเพื่อเริ่มต้นการเดินทางผ่านโลกที่สร้างจากจินตนาการ',
       mainTitle: 'สร้างตำนานของคุณ',
@@ -110,10 +120,15 @@ export class AppComponent implements OnInit, OnDestroy {
       loreSortAlpha: 'A-Z',
       loreBackButton: 'ย้อนกลับ',
       loreImageLoading: 'กำลังวาดภาพประกอบตำนาน...',
+      loreRewardsTitle: 'สิ่งที่ค้นพบจากตำนานนี้:',
       // Character Creation UI
       createHeroTitle: 'สร้างวีรบุรุษของคุณ',
       nameLabel: 'ชื่อ',
       namePlaceholder: 'ใส่ชื่อตัวละครของคุณ',
+      genderLabel: 'เพศ',
+      genderMale: 'ชาย',
+      genderFemale: 'หญิง',
+      genderOther: 'อื่นๆ',
       archetypeLabel: 'เลือกอาชีพเริ่มต้น',
       specializationLabel: 'เลือกความชำนาญ',
       appearanceLabel: 'ลักษณะภายนอก',
@@ -135,6 +150,9 @@ export class AppComponent implements OnInit, OnDestroy {
       dropItemConfirmation: 'คุณแน่ใจหรือไม่ว่าต้องการทิ้ง {itemName}?',
       dropButton: 'ทิ้ง',
       cancelButton: 'ยกเลิก',
+      // Companion UI
+      companionTitle: 'คู่หู',
+      companionCommandPlaceholder: 'ออกคำสั่งให้คู่หู...',
     },
     en: {
       sidebarTitle1: 'Infinite',
@@ -142,6 +160,11 @@ export class AppComponent implements OnInit, OnDestroy {
       questTitle: 'Current Quest',
       inventoryTitle: 'Inventory',
       statsTitle: 'Character Stats',
+      characterTitle: 'Character',
+      level: 'Level',
+      xp: 'Experience',
+      rebirths: 'Rebirths',
+      skillsTitle: 'Skills',
       emptyInventory: 'Your pockets are empty.',
       welcomeMessage: 'Your story awaits. Press the button to begin your journey through a world crafted by imagination.',
       mainTitle: 'Forge Your Legend',
@@ -179,10 +202,15 @@ export class AppComponent implements OnInit, OnDestroy {
       loreSortAlpha: 'A-Z',
       loreBackButton: 'Back to List',
       loreImageLoading: 'Painting an illustration for the legend...',
+      loreRewardsTitle: 'Discoveries from this Lore:',
       // Character Creation UI
       createHeroTitle: 'Create Your Hero',
       nameLabel: 'Name',
       namePlaceholder: 'Enter your character\'s name',
+      genderLabel: 'Gender',
+      genderMale: 'Male',
+      genderFemale: 'Female',
+      genderOther: 'Other',
       archetypeLabel: 'Choose your Archetype',
       specializationLabel: 'Choose your Specialization',
       appearanceLabel: 'Appearance',
@@ -204,6 +232,9 @@ export class AppComponent implements OnInit, OnDestroy {
       dropItemConfirmation: 'Are you sure you want to drop {itemName}?',
       dropButton: 'Drop',
       cancelButton: 'Cancel',
+      // Companion UI
+      companionTitle: 'Companion',
+      companionCommandPlaceholder: 'Issue a command to your companion...',
     }
   };
   
@@ -218,12 +249,14 @@ export class AppComponent implements OnInit, OnDestroy {
           {
             name: 'ผู้พิทักษ์',
             description: 'กำแพงเหล็กกล้าที่ไม่แตกหัก เชี่ยวชาญในการป้องกันตนเองและผู้อื่น',
-            stats: [{ name: 'พลังชีวิต', value: '120/120' }, { name: 'ความทนทาน', value: '80/80' }, { name: 'พลังป้องกัน', value: 'สูง' }]
+            stats: [{ name: 'พลังชีวิต', value: '120/120' }, { name: 'ความทนทาน', value: '80/80' }, { name: 'พลังป้องกัน', value: 'สูง' }],
+            initialSkills: [{ name: 'กระแทกโล่', description: 'โจมตีศัตรูด้วยโล่ มีโอกาสทำให้มึนงง', level: 1, xp: 0, xpToNextLevel: 100 }]
           },
           {
             name: 'กลาดิเอเตอร์',
             description: 'เจ้าแห่งสังเวียน ผู้สร้างสมดุลระหว่างการโจมตีที่โหดเหี้ยมและการป้องกันที่ช่ำชอง',
-            stats: [{ name: 'พลังชีวิต', value: '100/100' }, { name: 'ความทนทาน', value: '100/100' }, { name: 'พลังโจมตี', value: 'สูง' }]
+            stats: [{ name: 'พลังชีวิต', value: '100/100' }, { name: 'ความทนทาน', value: '100/100' }, { name: 'พลังโจมตี', value: 'สูง' }],
+            initialSkills: [{ name: 'โจมตีเหวี่ยง', description: 'โจมตีศัตรูทั้งหมดที่อยู่ข้างหน้าเป็นวงกว้าง', level: 1, xp: 0, xpToNextLevel: 100 }]
           }
         ]
       },
@@ -236,12 +269,14 @@ export class AppComponent implements OnInit, OnDestroy {
           {
             name: 'Guardian',
             description: 'An unbreakable wall of steel, specializing in protecting themselves and others.',
-            stats: [{ name: 'Health', value: '120/120' }, { name: 'Stamina', value: '80/80' }, { name: 'Defense', value: 'High' }]
+            stats: [{ name: 'Health', value: '120/120' }, { name: 'Stamina', value: '80/80' }, { name: 'Defense', value: 'High' }],
+            initialSkills: [{ name: 'Shield Bash', description: 'Strike an enemy with your shield, with a chance to stun.', level: 1, xp: 0, xpToNextLevel: 100 }]
           },
           {
             name: 'Gladiator',
             description: 'A master of the arena, balancing brutal offense with practiced defense.',
-            stats: [{ name: 'Health', value: '100/100' }, { name: 'Stamina', value: '100/100' }, { name: 'Attack', value: 'High' }]
+            stats: [{ name: 'Health', value: '100/100' }, { name: 'Stamina', value: '100/100' }, { name: 'Attack', value: 'High' }],
+            initialSkills: [{ name: 'Cleave', description: 'A wide, sweeping attack that can hit multiple foes.', level: 1, xp: 0, xpToNextLevel: 100 }]
           }
         ]
       }
@@ -256,12 +291,14 @@ export class AppComponent implements OnInit, OnDestroy {
           {
             name: 'นักฆ่า',
             description: 'ภูตผีผู้มอบความตายจากเงามืดด้วยความแม่นยำถึงชีวิต',
-            stats: [{ name: 'การลอบเร้น', value: 'สูง' }, { name: 'โจมตีติดคริ', value: '25%' }, { name: 'พลังชีวิต', value: '70/70' }]
+            stats: [{ name: 'การลอบเร้น', value: 'สูง' }, { name: 'โจมตีติดคริ', value: '25%' }, { name: 'พลังชีวิต', value: '70/70' }],
+            initialSkills: [{ name: 'แทงข้างหลัง', description: 'โจมตีจากเงามืด สร้างความเสียหายอย่างรุนแรง', level: 1, xp: 0, xpToNextLevel: 100 }]
           },
           {
             name: 'นักเล่นกล',
             description: 'เจ้าแห่งการหลอกลวงและล่อหลอก ก้าวนำหน้าศัตรูเสมอสามก้าว',
-            stats: [{ name: 'การหลบหลีก', value: 'สูง' }, { name: 'ความเจ้าเล่ห์', value: 'สูง' }, { name: 'ความทนทาน', value: '90/90' }]
+            stats: [{ name: 'การหลบหลีก', value: 'สูง' }, { name: 'ความเจ้าเล่ห์', value: 'สูง' }, { name: 'ความทนทาน', value: '90/90' }],
+            initialSkills: [{ name: 'โยนทราย', description: 'ทำให้ศัตรูตาบอดชั่วคราว ลดความแม่นยำ', level: 1, xp: 0, xpToNextLevel: 100 }]
           }
         ]
       },
@@ -274,12 +311,14 @@ export class AppComponent implements OnInit, OnDestroy {
           {
             name: 'Assassin',
             description: 'A phantom who deals death from the shadows with lethal precision.',
-            stats: [{ name: 'Stealth', value: 'High' }, { name: 'Critical Hit', value: '25%' }, { name: 'Health', value: '70/70' }]
+            stats: [{ name: 'Stealth', value: 'High' }, { name: 'Critical Hit', value: '25%' }, { name: 'Health', value: '70/70' }],
+            initialSkills: [{ name: 'Backstab', description: 'A powerful attack from the shadows that deals massive damage.', level: 1, xp: 0, xpToNextLevel: 100 }]
           },
           {
             name: 'Trickster',
             description: 'A master of deception and misdirection, always three steps ahead of their foes.',
-            stats: [{ name: 'Evasion', value: 'High' }, { name: 'Cunning', value: 'High' }, { name: 'Stamina', value: '90/90' }]
+            stats: [{ name: 'Evasion', value: 'High' }, { name: 'Cunning', value: 'High' }, { name: 'Stamina', value: '90/90' }],
+            initialSkills: [{ name: 'Pocket Sand', description: 'Temporarily blind an enemy, reducing their accuracy.', level: 1, xp: 0, xpToNextLevel: 100 }]
           }
         ]
       }
@@ -294,12 +333,14 @@ export class AppComponent implements OnInit, OnDestroy {
           {
             name: 'นักธาตุ',
             description: 'ผู้เป็นสื่อกลางของพลังธรรมชาติอันดิบเถื่อน ปลดปล่อยไฟและน้ำแข็งใส่ศัตรู',
-            stats: [{ name: 'มานา', value: '120/120' }, { name: 'พลังธาตุ', value: 'สูง' }, { name: 'ความเปราะบาง', value: 'สูง' }]
+            stats: [{ name: 'มานา', value: '120/120' }, { name: 'พลังธาตุ', value: 'สูง' }, { name: 'ความเปราะบาง', value: 'สูง' }],
+            initialSkills: [{ name: 'บอลไฟ', description: 'ขว้างลูกไฟใส่เป้าหมาย สร้างความเสียหายด้วยไฟ', level: 1, xp: 0, xpToNextLevel: 100 }]
           },
           {
             name: 'จอมขมังเวทย์',
             description: 'ผู้ข้องเกี่ยวกับศาสตร์ต้องห้าม ดูดกลืนชีวิตและถักทอคำสาป',
-            stats: [{ name: 'มานา', value: '80/80' }, { name: 'พลังชีวิต', value: '80/80' }, { name: 'เวทมนตร์เงา', value: 'สูง' }]
+            stats: [{ name: 'มานา', value: '80/80' }, { name: 'พลังชีวิต', value: '80/80' }, { name: 'เวทมนตร์เงา', value: 'สูง' }],
+            initialSkills: [{ name: 'ดูดพลังชีวิต', description: 'ดูดพลังชีวิตจากศัตรูมาฟื้นฟูให้ตนเอง', level: 1, xp: 0, xpToNextLevel: 100 }]
           }
         ]
       },
@@ -312,12 +353,14 @@ export class AppComponent implements OnInit, OnDestroy {
           {
             name: 'Elementalist',
             description: 'A conduit for the raw forces of nature, unleashing fire and ice upon their enemies.',
-            stats: [{ name: 'Mana', value: '120/120' }, { name: 'Elemental Power', value: 'High' }, { name: 'Constitution', value: 'Low' }]
+            stats: [{ name: 'Mana', value: '120/120' }, { name: 'Elemental Power', value: 'High' }, { name: 'Constitution', value: 'Low' }],
+            initialSkills: [{ name: 'Fireball', description: 'Hurl a ball of fire at a target, causing fire damage.', level: 1, xp: 0, xpToNextLevel: 100 }]
           },
           {
             name: 'Warlock',
             description: 'One who dabbles in forbidden arts, siphoning life and weaving curses.',
-            stats: [{ name: 'Mana', value: '80/80' }, { name: 'Health', value: '80/80' }, { name: 'Shadow Magic', value: 'High' }]
+            stats: [{ name: 'Mana', value: '80/80' }, { name: 'Health', value: '80/80' }, { name: 'Shadow Magic', value: 'High' }],
+            initialSkills: [{ name: 'Life Drain', description: 'Siphon life force from an enemy to heal yourself.', level: 1, xp: 0, xpToNextLevel: 100 }]
           }
         ]
       }
@@ -341,10 +384,19 @@ export class AppComponent implements OnInit, OnDestroy {
     error: null,
     storySegment: null,
     gameState: {
+      characterName: '',
+      avatarUrl: undefined,
+      level: 1,
+      xp: 0,
+      xpToNextLevel: 100,
+      rebirths: 0,
+      skills: [],
       inventory: [],
       currentQuest: this.uiTextDb.th.initialQuest,
       stats: [],
       lorebook: [],
+      playerGender: undefined,
+      companion: null,
     },
     image: null,
   };
@@ -365,8 +417,12 @@ export class AppComponent implements OnInit, OnDestroy {
   storySegment = computed(() => this.state().storySegment);
   gameState = computed(() => this.state().gameState);
   image = computed(() => this.state().image ? `data:image/jpeg;base64,${this.state().image}` : null);
+  characterNameDisplay = computed(() => this.gameState()?.characterName ?? '');
+  avatarUrl = computed(() => this.gameState()?.avatarUrl);
   characterStats = computed(() => this.gameState()?.stats ?? []);
+  skills = computed(() => this.gameState()?.skills ?? []);
   lorebook = computed(() => this.gameState()?.lorebook ?? []);
+  companion = computed(() => this.gameState()?.companion);
   
   filteredAndSortedLore = computed(() => {
     const lore = this.lorebook() ?? [];
@@ -581,7 +637,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private _performSave(): SavedState | null {
     const currentState = this.state();
-    if (currentState.storySegment && currentState.gameState && currentState.image) {
+    if (currentState.storySegment && currentState.gameState) {
       const stateToSave: SavedState = {
         storySegment: currentState.storySegment,
         gameState: currentState.gameState,
@@ -650,19 +706,30 @@ export class AppComponent implements OnInit, OnDestroy {
 
   async confirmCharacterCreation(): Promise<void> {
     const name = this.characterName().trim();
+    const gender = this.characterGender();
     const archetype = this.selectedArchetype();
     const specialization = this.selectedSpecialization();
-    if (!name || !archetype || !specialization) return;
+    if (!name || !gender || !archetype || !specialization) return;
 
     this.audioService.playSound('start');
     const currentLangUi = this.uiText();
     const archetypeDetails = this.archetypeData()[archetype];
+    const avatarUrl = `https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(name)}`;
 
     const initialGameState: GameState = {
+      characterName: name,
+      avatarUrl: avatarUrl,
+      level: 1,
+      xp: 0,
+      xpToNextLevel: 100,
+      rebirths: 0,
+      skills: specialization.initialSkills,
       inventory: archetypeDetails.inventory,
       currentQuest: currentLangUi.initialQuest,
       stats: specialization.stats,
-      lorebook: []
+      lorebook: [],
+      playerGender: gender,
+      companion: null
     };
     
     this.closeCharacterCreation();
@@ -675,9 +742,9 @@ export class AppComponent implements OnInit, OnDestroy {
       loadingMessage: currentLangUi.loadingWorld
     });
     
-    const storyContext = `The hero, named ${name}, is a ${archetype}. Appearance: ${this.characterAppearance()}. They awaken with a gasp, a sense of purpose humming in their veins, but the path ahead is shrouded in mist.`;
+    const storyContext = `The hero, named ${name}, is a ${gender} ${archetype}. Appearance: ${this.characterAppearance()}. They awaken with a gasp, a sense of purpose humming in their veins, but the path ahead is shrouded in mist.`;
     
-    await this.processChoice(currentLangUi.initialChoice, storyContext);
+    await this.processChoice(currentLangUi.initialChoice, storyContext, '');
   }
 
   async makeChoice(choice: string): Promise<void> {
@@ -692,10 +759,12 @@ export class AppComponent implements OnInit, OnDestroy {
     }));
     
     const currentStory = this.state().storySegment?.storyText ?? this.uiText().initialStoryContext;
-    await this.processChoice(choice, currentStory);
+    const command = this.companionCommand();
+    this.companionCommand.set(''); // Clear input after sending
+    await this.processChoice(choice, currentStory, command);
   }
 
-  private async processChoice(choice: string, storyContext: string): Promise<void> {
+  private async processChoice(choice: string, storyContext: string, companionCommand: string): Promise<void> {
     try {
       const initialGameState = this.state().gameState;
       if (!initialGameState) {
@@ -705,6 +774,7 @@ export class AppComponent implements OnInit, OnDestroy {
       const aiResponse = await this.geminiService.generateNextStep(
         storyContext,
         choice,
+        companionCommand,
         initialGameState,
         this.language()
       );
@@ -728,7 +798,9 @@ export class AppComponent implements OnInit, OnDestroy {
           ...s,
           storySegment: aiResponse.story,
           gameState: {
-            ...s.gameState,
+            // We must preserve properties not returned by the AI, like name and avatar
+            characterName: s.gameState.characterName,
+            avatarUrl: s.gameState.avatarUrl,
             ...aiResponse.gameState,
             lorebook: [...oldLore, ...newLoreEntries]
           }
